@@ -5,7 +5,7 @@ import { Logo } from './components/Logo.js';
 import { RepoList } from './components/RepoList.js';
 import { FileTree, type FileEntry } from './components/FileTree.js';
 import { scanRepos, fuzzyMatch, listDirectory, getParentDir, type Repo } from './scanner.js';
-// Path is printed to stdout; shell wrapper does the cd
+import { getFavorites, toggleFavorite } from './config.js';
 
 type View = 'repos' | 'files';
 
@@ -16,6 +16,7 @@ export function App() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [scanning, setScanning] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
 
   // File tree state
   const [view, setView] = useState<View>('repos');
@@ -26,17 +27,28 @@ export function App() {
   const [fileIndex, setFileIndex] = useState(0);
 
   useEffect(() => {
+    setFavorites(getFavorites());
     const repos = scanRepos();
     setAllRepos(repos);
     setScanning(false);
   }, []);
 
+  // Sort: favorites first, then alphabetical
+  const sorted = useMemo(() => {
+    return [...allRepos].sort((a, b) => {
+      const aFav = favorites.has(a.path) ? 0 : 1;
+      const bFav = favorites.has(b.path) ? 0 : 1;
+      if (aFav !== bFav) return aFav - bFav;
+      return a.name.localeCompare(b.name);
+    });
+  }, [allRepos, favorites]);
+
   const filtered = useMemo(() => {
-    if (!query) return allRepos;
-    return allRepos.filter(
+    if (!query) return sorted;
+    return sorted.filter(
       (r) => fuzzyMatch(query, r.name) || fuzzyMatch(query, r.path)
     );
-  }, [allRepos, query]);
+  }, [sorted, query]);
 
   useEffect(() => {
     setSelectedIndex(0);
@@ -82,6 +94,13 @@ export function App() {
         const repo = filtered[selectedIndex];
         if (repo) {
           selectPath(repo.path);
+        }
+      } else if (key.tab) {
+        // Toggle favorite
+        const repo = filtered[selectedIndex];
+        if (repo) {
+          toggleFavorite(repo.path);
+          setFavorites(getFavorites());
         }
       } else if (key.escape) {
         exit();
@@ -180,8 +199,8 @@ export function App() {
       <Box paddingLeft={2} marginBottom={1}>
         <Text color="cyan" bold>❯ </Text>
         <TextInput value={query} onChange={setQuery} placeholder="Search repos..." />
-        {filtered.length !== allRepos.length && (
-          <Text dimColor> ({filtered.length}/{allRepos.length})</Text>
+        {filtered.length !== sorted.length && (
+          <Text dimColor> ({filtered.length}/{sorted.length})</Text>
         )}
       </Box>
 
@@ -189,12 +208,13 @@ export function App() {
         repos={filtered}
         selectedIndex={selectedIndex}
         query={query}
+        favorites={favorites}
       />
 
       {/* Footer */}
       <Box marginTop={1} paddingLeft={2}>
         <Text dimColor>
-          <Text color="cyan">↑↓</Text> navigate  <Text color="cyan">→</Text> browse files  <Text color="cyan">⏎</Text> select  <Text color="cyan">esc</Text> quit
+          <Text color="cyan">↑↓</Text> navigate  <Text color="cyan">→</Text> browse  <Text color="cyan">⏎</Text> select  <Text color="cyan">tab</Text> ★ favorite  <Text color="cyan">esc</Text> quit
         </Text>
       </Box>
     </Box>

@@ -6,6 +6,7 @@ interface Props {
   repos: Repo[];
   selectedIndex: number;
   query: string;
+  favorites: Set<string>;
 }
 
 function truncate(str: string, max: number): string {
@@ -23,7 +24,7 @@ function shortenUrl(url: string): string {
     .replace('https://gitlab.com/', 'gl:');
 }
 
-export function RepoList({ repos, selectedIndex, query }: Props) {
+export function RepoList({ repos, selectedIndex, query, favorites }: Props) {
   if (repos.length === 0 && query) {
     return (
       <Box marginTop={1} paddingLeft={2}>
@@ -55,7 +56,7 @@ export function RepoList({ repos, selectedIndex, query }: Props) {
     <Box flexDirection="column">
       {/* Column headers */}
       <Box paddingLeft={4} marginBottom={0}>
-        <Box width={22}>
+        <Box width={24}>
           <Text dimColor bold>REPO</Text>
         </Box>
         <Box width={18}>
@@ -80,6 +81,7 @@ export function RepoList({ repos, selectedIndex, query }: Props) {
       {visible.map((repo, i) => {
         const actualIndex = start + i;
         const isSelected = actualIndex === selectedIndex;
+        const isFav = favorites.has(repo.path);
 
         // Sync status
         let syncText = '';
@@ -99,9 +101,9 @@ export function RepoList({ repos, selectedIndex, query }: Props) {
               <Text color={isSelected ? 'cyanBright' : 'gray'}>
                 {isSelected ? ' ▸ ' : '   '}
               </Text>
-              <Box width={22}>
+              <Box width={24}>
                 <Text bold={isSelected} color={isSelected ? 'white' : 'gray'}>
-                  {truncate(repo.name, 20)}
+                  {isFav ? '★ ' : '  '}{truncate(repo.name, isFav ? 18 : 20)}
                 </Text>
               </Box>
               <Box width={18}>
