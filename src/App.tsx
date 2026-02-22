@@ -144,19 +144,14 @@ export function App() {
         setSelectedIndex((prev) => Math.max(0, prev - 1));
       } else if (key.downArrow) {
         setSelectedIndex((prev) => Math.min(filtered.length - 1, prev + 1));
-      } else if (key.rightArrow) {
-        // Enter repo file tree
+      } else if (key.return || key.rightArrow) {
+        // Enter or Right arrow: browse into repo
         const repo = filtered[selectedIndex];
         if (repo) {
           setCurrentRepoName(repo.name);
           setCurrentRepoRoot(repo.path);
           setView('files');
           enterDir(repo.path);
-        }
-      } else if (key.return) {
-        const repo = filtered[selectedIndex];
-        if (repo) {
-          selectPath(repo.path);
         }
       } else if (key.ctrl && input === 'p') {
         doGitAction('pull');
@@ -405,7 +400,7 @@ export function App() {
       {/* Footer */}
       <Box marginTop={1} paddingLeft={2} flexDirection="column">
         <Text dimColor>
-          <Text color="cyan">↑↓</Text> navigate  <Text color="cyan">→</Text> browse  <Text color="cyan">⏎</Text> select  <Text color="cyan">tab</Text> ★ favorite  <Text color="cyan">esc</Text> quit
+          <Text color="cyan">↑↓</Text> navigate  <Text color="cyan">⏎</Text> open  <Text color="cyan">tab</Text> ★ favorite  <Text color="cyan">esc</Text> quit
         </Text>
         <Text dimColor>
           <Text color="cyan">^p</Text> pull  <Text color="cyan">^s</Text> status  <Text color="cyan">^l</Text> log  <Text color="cyan">^b</Text> branches
