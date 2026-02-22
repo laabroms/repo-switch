@@ -17,6 +17,12 @@ function shortenPath(path: string): string {
   return path.startsWith(home) ? '~' + path.slice(home.length) : path;
 }
 
+function shortenUrl(url: string): string {
+  return url
+    .replace('https://github.com/', '')
+    .replace('https://gitlab.com/', 'gl:');
+}
+
 export function RepoList({ repos, selectedIndex, query }: Props) {
   if (repos.length === 0 && query) {
     return (
@@ -55,10 +61,10 @@ export function RepoList({ repos, selectedIndex, query }: Props) {
         <Box width={18}>
           <Text dimColor bold>BRANCH</Text>
         </Box>
-        <Box width={10}>
+        <Box width={12}>
           <Text dimColor bold>STATUS</Text>
         </Box>
-        <Text dimColor bold>LAST COMMIT</Text>
+        <Text dimColor bold>SYNC</Text>
       </Box>
 
       <Box paddingLeft={4} marginBottom={0}>
@@ -74,6 +80,18 @@ export function RepoList({ repos, selectedIndex, query }: Props) {
       {visible.map((repo, i) => {
         const actualIndex = start + i;
         const isSelected = actualIndex === selectedIndex;
+
+        // Sync status
+        let syncText = '';
+        if (repo.ahead > 0 && repo.behind > 0) {
+          syncText = `↑${repo.ahead} ↓${repo.behind}`;
+        } else if (repo.ahead > 0) {
+          syncText = `↑${repo.ahead}`;
+        } else if (repo.behind > 0) {
+          syncText = `↓${repo.behind}`;
+        } else {
+          syncText = '✓';
+        }
 
         return (
           <Box key={repo.path} flexDirection="column">
@@ -91,18 +109,23 @@ export function RepoList({ repos, selectedIndex, query }: Props) {
                   {truncate(repo.branch, 16)}
                 </Text>
               </Box>
-              <Box width={10}>
+              <Box width={12}>
                 {repo.dirty ? (
                   <Text color="yellow">● modified</Text>
                 ) : (
                   <Text color={isSelected ? 'greenBright' : 'green'}>✓ clean</Text>
                 )}
               </Box>
-              <Text dimColor>{repo.lastCommit}</Text>
+              <Text color={repo.behind > 0 ? 'red' : repo.ahead > 0 ? 'yellow' : 'green'} dimColor={!isSelected}>
+                {syncText}
+              </Text>
             </Box>
             {isSelected && (
-              <Box paddingLeft={3}>
+              <Box paddingLeft={3} flexDirection="column">
                 <Text dimColor>{shortenPath(repo.path)}</Text>
+                {repo.remoteUrl && (
+                  <Text color="blue" dimColor>{shortenUrl(repo.remoteUrl)}</Text>
+                )}
               </Box>
             )}
           </Box>

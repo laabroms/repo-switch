@@ -9,6 +9,9 @@ export interface Repo {
   branch: string;
   dirty: boolean;
   lastCommit: string;
+  remoteUrl: string;
+  ahead: number;
+  behind: number;
 }
 
 const COMMON_CODE_DIRS = [
@@ -96,12 +99,48 @@ function getRepoInfo(repoPath: string): Repo | null {
       lastCommit = 'no commits';
     }
 
+    // Remote URL
+    let remoteUrl = '';
+    try {
+      remoteUrl = execSync('git remote get-url origin', {
+        cwd: repoPath,
+        encoding: 'utf8',
+        stdio: ['pipe', 'pipe', 'ignore'],
+        timeout: 3000,
+      }).trim();
+      remoteUrl = remoteUrl
+        .replace(/^git@github\.com:/, 'https://github.com/')
+        .replace(/\.git$/, '');
+    } catch {
+      // no remote
+    }
+
+    // Ahead/behind
+    let ahead = 0;
+    let behind = 0;
+    try {
+      const abOutput = execSync('git rev-list --left-right --count HEAD...@{upstream}', {
+        cwd: repoPath,
+        encoding: 'utf8',
+        stdio: ['pipe', 'pipe', 'ignore'],
+        timeout: 3000,
+      }).trim();
+      const [a, b] = abOutput.split(/\s+/);
+      ahead = parseInt(a, 10) || 0;
+      behind = parseInt(b, 10) || 0;
+    } catch {
+      // no upstream
+    }
+
     return {
       name: basename(repoPath),
       path: repoPath,
       branch,
       dirty: dirtyOutput.length > 0,
       lastCommit,
+      remoteUrl,
+      ahead,
+      behind,
     };
   } catch {
     return null;
