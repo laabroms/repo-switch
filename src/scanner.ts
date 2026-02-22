@@ -211,6 +211,33 @@ export function getParentDir(dirPath: string): string {
   return dirname(dirPath);
 }
 
+export function runGitAction(repoPath: string, action: 'pull' | 'status' | 'log'): string {
+  try {
+    switch (action) {
+      case 'pull':
+        return execSync('git pull --ff-only', {
+          cwd: repoPath,
+          encoding: 'utf8',
+          timeout: 15000,
+        }).trim();
+      case 'status':
+        return execSync('git status --short', {
+          cwd: repoPath,
+          encoding: 'utf8',
+          timeout: 5000,
+        }).trim() || 'Clean — nothing to commit';
+      case 'log':
+        return execSync('git log --oneline -10', {
+          cwd: repoPath,
+          encoding: 'utf8',
+          timeout: 5000,
+        }).trim();
+    }
+  } catch (e: unknown) {
+    return (e as Error).message || 'Command failed';
+  }
+}
+
 export function fuzzyMatch(query: string, text: string): boolean {
   const q = query.toLowerCase();
   const t = text.toLowerCase();

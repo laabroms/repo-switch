@@ -4,10 +4,11 @@ import TextInput from 'ink-text-input';
 import { Logo } from './components/Logo.js';
 import { RepoList } from './components/RepoList.js';
 import { FileTree, type FileEntry } from './components/FileTree.js';
-import { scanRepos, fuzzyMatch, listDirectory, getParentDir, type Repo } from './scanner.js';
+import { GitActionModal } from './components/GitActionModal.js';
+import { scanRepos, fuzzyMatch, listDirectory, getParentDir, runGitAction, type Repo } from './scanner.js';
 import { getFavorites, toggleFavorite } from './config.js';
 
-type View = 'repos' | 'files';
+type View = 'repos' | 'files' | 'git-action';
 
 export function App() {
   const { exit } = useApp();
@@ -25,6 +26,12 @@ export function App() {
   const [currentRepoRoot, setCurrentRepoRoot] = useState('');
   const [fileEntries, setFileEntries] = useState<FileEntry[]>([]);
   const [fileIndex, setFileIndex] = useState(0);
+
+  // Git action state
+  const [gitActionType, setGitActionType] = useState('');
+  const [gitActionRepo, setGitActionRepo] = useState('');
+  const [gitActionOutput, setGitActionOutput] = useState('');
+  const [gitActionLoading, setGitActionLoading] = useState(false);
 
   useEffect(() => {
     setFavorites(getFavorites());
@@ -73,8 +80,31 @@ export function App() {
     setTimeout(() => exit(), 300);
   };
 
+  // Run a git action on the selected repo
+  const doGitAction = (action: 'pull' | 'status' | 'log') => {
+    const repo = filtered[selectedIndex];
+    if (!repo) return;
+    setGitActionType(action);
+    setGitActionRepo(repo.name);
+    setGitActionLoading(true);
+    setGitActionOutput('');
+    setView('git-action');
+    const output = runGitAction(repo.path, action);
+    setGitActionOutput(output);
+    setGitActionLoading(false);
+    if (action === 'pull') {
+      const repos = scanRepos();
+      setAllRepos(repos);
+    }
+  };
+
   useInput((input, key) => {
     if (selected) return;
+
+    if (view === 'git-action') {
+      setView('repos');
+      return;
+    }
 
     if (view === 'repos') {
       if (key.upArrow) {
@@ -95,6 +125,12 @@ export function App() {
         if (repo) {
           selectPath(repo.path);
         }
+      } else if (key.ctrl && input === 'p') {
+        doGitAction('pull');
+      } else if (key.ctrl && input === 's') {
+        doGitAction('status');
+      } else if (key.ctrl && input === 'l') {
+        doGitAction('log');
       } else if (key.tab) {
         // Toggle favorite
         const repo = filtered[selectedIndex];
@@ -169,6 +205,20 @@ export function App() {
     );
   }
 
+  if (view === 'git-action') {
+    return (
+      <Box flexDirection="column">
+        <Logo />
+        <GitActionModal
+          action={gitActionType}
+          repoName={gitActionRepo}
+          output={gitActionOutput}
+          loading={gitActionLoading}
+        />
+      </Box>
+    );
+  }
+
   if (view === 'files') {
     return (
       <Box flexDirection="column">
@@ -212,9 +262,12 @@ export function App() {
       />
 
       {/* Footer */}
-      <Box marginTop={1} paddingLeft={2}>
+      <Box marginTop={1} paddingLeft={2} flexDirection="column">
         <Text dimColor>
           <Text color="cyan">↑↓</Text> navigate  <Text color="cyan">→</Text> browse  <Text color="cyan">⏎</Text> select  <Text color="cyan">tab</Text> ★ favorite  <Text color="cyan">esc</Text> quit
+        </Text>
+        <Text dimColor>
+          <Text color="cyan">^p</Text> pull  <Text color="cyan">^s</Text> status  <Text color="cyan">^l</Text> log
         </Text>
       </Box>
     </Box>
