@@ -5,7 +5,7 @@ import { Logo } from './components/Logo.js';
 import { RepoList } from './components/RepoList.js';
 import { FileTree, type FileEntry } from './components/FileTree.js';
 import { scanRepos, fuzzyMatch, listDirectory, getParentDir, type Repo } from './scanner.js';
-import clipboardy from 'clipboardy';
+// Path is printed to stdout; shell wrapper does the cd
 
 type View = 'repos' | 'files';
 
@@ -54,11 +54,11 @@ export function App() {
     setFileIndex(0);
   };
 
-  // Select a path (copy cd command)
+  // Select a path — print to stdout so the shell wrapper can cd
   const selectPath = (path: string) => {
     setSelected(path);
-    clipboardy.writeSync(`cd ${path}`);
-    setTimeout(() => exit(), 500);
+    process.stdout.write(path + '\n');
+    setTimeout(() => exit(), 300);
   };
 
   useInput((input, key) => {
@@ -144,13 +144,6 @@ export function App() {
           </Box>
           <Box paddingLeft={2}>
             <Text dimColor>{selected}</Text>
-          </Box>
-          <Box marginTop={1}>
-            <Text color="cyan">📋 Copied: </Text>
-            <Text color="white" bold>cd {selected}</Text>
-          </Box>
-          <Box>
-            <Text dimColor italic>Paste in terminal to jump there</Text>
           </Box>
         </Box>
       </Box>
