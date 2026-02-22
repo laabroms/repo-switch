@@ -211,6 +211,68 @@ export function getParentDir(dirPath: string): string {
   return dirname(dirPath);
 }
 
+// --- Branch management ---
+
+export interface Branch {
+  name: string;
+  current: boolean;
+  merged: boolean;
+  lastCommitDate: Date;
+  daysStale: number;
+  protected: boolean;
+}
+
+const PROTECTED_BRANCHES = ['main', 'master', 'develop', 'development'];
+
+export function getBranches(repoPath: string): Branch[] {
+  const currentBranch = execSync('git rev-parse --abbrev-ref HEAD', {
+    cwd: repoPath, encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'],
+  }).trim();
+
+  const branchOutput = execSync(
+    'git for-each-ref --sort=-committerdate refs/heads/ --format="%(refname:short)|%(committerdate:iso8601)"',
+    { cwd: repoPath, encoding: 'utf8' }
+  );
+
+  const mergedOutput = execSync(`git branch --merged ${currentBranch}`, {
+    cwd: repoPath, encoding: 'utf8',
+  });
+  const mergedBranches = new Set(
+    mergedOutput.split('\n').map(b => b.replace('*', '').trim()).filter(Boolean)
+  );
+
+  const branches: Branch[] = [];
+  const now = new Date();
+
+  for (const line of branchOutput.split('\n').filter(Boolean)) {
+    const [name, dateStr] = line.split('|');
+    const lastCommitDate = new Date(dateStr);
+    const daysStale = Math.floor((now.getTime() - lastCommitDate.getTime()) / (1000 * 60 * 60 * 24));
+    const isProtected = PROTECTED_BRANCHES.includes(name) || name === currentBranch;
+
+    branches.push({
+      name,
+      current: name === currentBranch,
+      merged: mergedBranches.has(name) && !isProtected,
+      lastCommitDate,
+      daysStale,
+      protected: isProtected,
+    });
+  }
+
+  return branches;
+}
+
+export function deleteBranch(repoPath: string, branchName: string, force: boolean = false): boolean {
+  try {
+    const flag = force ? '-D' : '-d';
+    execSync(`git branch ${flag} "${branchName}"`, { cwd: repoPath, stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function readFilePreview(filePath: string, maxLines: number = 10): string[] {
   try {
     const content = readFileSync(filePath, 'utf8');

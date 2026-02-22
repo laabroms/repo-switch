@@ -5,10 +5,11 @@ import { Logo } from './components/Logo.js';
 import { RepoList } from './components/RepoList.js';
 import { FileTree, type FileEntry } from './components/FileTree.js';
 import { GitActionModal } from './components/GitActionModal.js';
-import { scanRepos, fuzzyMatch, listDirectory, getParentDir, runGitAction, type Repo } from './scanner.js';
+import { BranchManager } from './components/BranchManager.js';
+import { scanRepos, fuzzyMatch, listDirectory, getParentDir, runGitAction, getBranches, deleteBranch, type Repo, type Branch } from './scanner.js';
 import { getFavorites, toggleFavorite } from './config.js';
 
-type View = 'repos' | 'files' | 'git-action';
+type View = 'repos' | 'files' | 'git-action' | 'branches';
 
 export function App() {
   const { exit } = useApp();
@@ -32,6 +33,15 @@ export function App() {
   const [gitActionRepo, setGitActionRepo] = useState('');
   const [gitActionOutput, setGitActionOutput] = useState('');
   const [gitActionLoading, setGitActionLoading] = useState(false);
+
+  // Branch manager state
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [branchIndex, setBranchIndex] = useState(0);
+  const [branchRepoName, setBranchRepoName] = useState('');
+  const [branchRepoPath, setBranchRepoPath] = useState('');
+  const [markedForDeletion, setMarkedForDeletion] = useState<Set<string>>(new Set());
+  const [branchConfirm, setBranchConfirm] = useState(false);
+  const [branchDeleteResults, setBranchDeleteResults] = useState<{ success: string[]; failed: string[] } | null>(null);
 
   useEffect(() => {
     setFavorites(getFavorites());
@@ -131,6 +141,24 @@ export function App() {
         doGitAction('status');
       } else if (key.ctrl && input === 'l') {
         doGitAction('log');
+      } else if (key.ctrl && input === 'b') {
+        // Open branch manager
+        const repo = filtered[selectedIndex];
+        if (repo) {
+          try {
+            const branchData = getBranches(repo.path);
+            setBranches(branchData);
+            setBranchIndex(0);
+            setBranchRepoName(repo.name);
+            setBranchRepoPath(repo.path);
+            setMarkedForDeletion(new Set());
+            setBranchConfirm(false);
+            setBranchDeleteResults(null);
+            setView('branches');
+          } catch {
+            // not a git repo or error
+          }
+        }
       } else if (key.tab) {
         // Toggle favorite
         const repo = filtered[selectedIndex];
@@ -174,6 +202,70 @@ export function App() {
         // Back to repo list
         setView('repos');
       }
+    } else if (view === 'branches') {
+      if (branchDeleteResults) {
+        setBranchDeleteResults(null);
+        setView('repos');
+        const repos = scanRepos();
+        setAllRepos(repos);
+        return;
+      }
+
+      if (branchConfirm) {
+        if (input === 'y' || input === 'Y') {
+          const success: string[] = [];
+          const failed: string[] = [];
+          for (const name of markedForDeletion) {
+            const branch = branches.find((b) => b.name === name);
+            if (branch) {
+              const force = !branch.merged;
+              if (deleteBranch(branchRepoPath, name, force)) {
+                success.push(name);
+              } else {
+                failed.push(name);
+              }
+            }
+          }
+          setBranchDeleteResults({ success, failed });
+          setBranchConfirm(false);
+        } else if (input === 'n' || input === 'N' || key.escape) {
+          setBranchConfirm(false);
+        }
+        return;
+      }
+
+      if (key.upArrow) {
+        setBranchIndex((prev) => Math.max(0, prev - 1));
+      } else if (key.downArrow) {
+        setBranchIndex((prev) => Math.min(branches.length - 1, prev + 1));
+      } else if (input === ' ') {
+        const branch = branches[branchIndex];
+        if (branch && !branch.protected) {
+          setMarkedForDeletion((prev) => {
+            const next = new Set(prev);
+            if (next.has(branch.name)) {
+              next.delete(branch.name);
+            } else {
+              next.add(branch.name);
+            }
+            return next;
+          });
+        }
+      } else if (input === 'd' || key.delete) {
+        if (markedForDeletion.size > 0) {
+          setBranchConfirm(true);
+        }
+      } else if (input === 'm') {
+        const merged = branches.filter((b) => b.merged && !b.protected);
+        setMarkedForDeletion(new Set(merged.map((b) => b.name)));
+      } else if (input === 's') {
+        const stale = branches.filter((b) => b.daysStale > 90 && !b.protected);
+        setMarkedForDeletion(new Set(stale.map((b) => b.name)));
+      } else if (input === 'c') {
+        setMarkedForDeletion(new Set());
+      } else if (key.escape) {
+        setView('repos');
+      }
     }
   });
 
@@ -215,6 +307,32 @@ export function App() {
           output={gitActionOutput}
           loading={gitActionLoading}
         />
+      </Box>
+    );
+  }
+
+  if (view === 'branches') {
+    return (
+      <Box flexDirection="column">
+        <Logo />
+        <BranchManager
+          branches={branches}
+          selectedIndex={branchIndex}
+          markedForDeletion={markedForDeletion}
+          repoName={branchRepoName}
+          confirmMode={branchConfirm}
+          deleteResults={branchDeleteResults}
+        />
+        {!branchConfirm && !branchDeleteResults && (
+          <Box marginTop={1} paddingLeft={2} flexDirection="column">
+            <Text dimColor>
+              <Text color="cyan">↑↓</Text> navigate  <Text color="cyan">space</Text> mark  <Text color="cyan">d</Text> delete marked  <Text color="cyan">esc</Text> back
+            </Text>
+            <Text dimColor>
+              <Text color="cyan">m</Text> mark merged  <Text color="cyan">s</Text> mark stale  <Text color="cyan">c</Text> clear
+            </Text>
+          </Box>
+        )}
       </Box>
     );
   }
@@ -267,7 +385,7 @@ export function App() {
           <Text color="cyan">↑↓</Text> navigate  <Text color="cyan">→</Text> browse  <Text color="cyan">⏎</Text> select  <Text color="cyan">tab</Text> ★ favorite  <Text color="cyan">esc</Text> quit
         </Text>
         <Text dimColor>
-          <Text color="cyan">^p</Text> pull  <Text color="cyan">^s</Text> status  <Text color="cyan">^l</Text> log
+          <Text color="cyan">^p</Text> pull  <Text color="cyan">^s</Text> status  <Text color="cyan">^l</Text> log  <Text color="cyan">^b</Text> branches
         </Text>
       </Box>
     </Box>
