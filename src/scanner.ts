@@ -1,0 +1,139 @@
+import { existsSync } from 'fs';
+import { basename, join } from 'path';
+import { execSync } from 'child_process';
+import { homedir } from 'os';
+
+export interface Repo {
+  name: string;
+  path: string;
+  branch: string;
+  dirty: boolean;
+  lastCommit: string;
+}
+
+const COMMON_CODE_DIRS = [
+  'Desktop', 'Documents', 'Projects', 'projects', 'Code', 'code',
+  'dev', 'Dev', 'src', 'repos', 'Repos', 'workspace', 'Workspace',
+  'work', 'Work', 'Github', 'github', '.openclaw/workspace',
+];
+
+function getSearchDirs(): string[] {
+  const home = homedir();
+  const dirs: string[] = [];
+
+  for (const dir of COMMON_CODE_DIRS) {
+    const full = join(home, dir);
+    if (existsSync(full)) {
+      dirs.push(full);
+    }
+  }
+
+  // Fallback: if no common dirs found, scan home with depth 2
+  if (dirs.length === 0) {
+    dirs.push(home);
+  }
+
+  return dirs;
+}
+
+function findGitReposFast(dirs: string[]): string[] {
+  const excludes = [
+    'node_modules', '.Trash', 'Library', '.cache', '.npm', '.yarn',
+    '.pnpm', 'vendor', '.next', '__pycache__', 'venv', '.venv',
+    '.cargo', '.rustup', '.local', '.config',
+  ];
+
+  const pruneExpr = excludes
+    .map((d) => `-name "${d}"`)
+    .join(' -o ');
+
+  const allPaths: string[] = [];
+
+  for (const dir of dirs) {
+    try {
+      const cmd = `find "${dir}" -maxdepth 5 \\( ${pruneExpr} \\) -prune -o -name ".git" -type d -print 2>/dev/null | head -100`;
+      const output = execSync(cmd, { encoding: 'utf8', timeout: 10000 });
+
+      const paths = output
+        .split('\n')
+        .filter(Boolean)
+        .map((gitDir) => gitDir.replace(/\/\.git$/, ''));
+
+      allPaths.push(...paths);
+    } catch {
+      // skip dirs that fail
+    }
+  }
+
+  return allPaths;
+}
+
+function getRepoInfo(repoPath: string): Repo | null {
+  try {
+    const branch = execSync('git rev-parse --abbrev-ref HEAD', {
+      cwd: repoPath,
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+      timeout: 3000,
+    }).trim();
+
+    const dirtyOutput = execSync('git status --porcelain', {
+      cwd: repoPath,
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+      timeout: 3000,
+    }).trim();
+
+    let lastCommit = '';
+    try {
+      lastCommit = execSync('git log -1 --format="%ar"', {
+        cwd: repoPath,
+        encoding: 'utf8',
+        stdio: ['pipe', 'pipe', 'ignore'],
+        timeout: 3000,
+      }).trim();
+    } catch {
+      lastCommit = 'no commits';
+    }
+
+    return {
+      name: basename(repoPath),
+      path: repoPath,
+      branch,
+      dirty: dirtyOutput.length > 0,
+      lastCommit,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function scanRepos(): Repo[] {
+  const searchDirs = getSearchDirs();
+  const repoPaths = findGitReposFast(searchDirs);
+
+  const repos: Repo[] = [];
+  for (const repoPath of repoPaths) {
+    const info = getRepoInfo(repoPath);
+    if (info) {
+      repos.push(info);
+    }
+  }
+
+  // Sort alphabetically
+  repos.sort((a, b) => a.name.localeCompare(b.name));
+  return repos;
+}
+
+export function fuzzyMatch(query: string, text: string): boolean {
+  const q = query.toLowerCase();
+  const t = text.toLowerCase();
+
+  if (t.includes(q)) return true;
+
+  let qi = 0;
+  for (let ti = 0; ti < t.length && qi < q.length; ti++) {
+    if (t[ti] === q[qi]) qi++;
+  }
+  return qi === q.length;
+}
