@@ -23,9 +23,10 @@ function hasShellFunction(): boolean {
 }
 
 if (!hasShellFunction()) {
-  process.stderr.write('\n\x1b[33m⚠  Shell function not found.\x1b[0m Add this to your ~/.zshrc:\n\n');
-  process.stderr.write(`  \x1b[36m${SHELL_FUNC}\x1b[0m\n\n`);
-  process.stderr.write('Then run \x1b[1msource ~/.zshrc\x1b[0m and use \x1b[1mrs\x1b[0m instead of \x1b[1mrepo-switch\x1b[0m\n\n');
+  const addCmd = `echo '${SHELL_FUNC}' >> ~/.zshrc && source ~/.zshrc`;
+  process.stderr.write('\n\x1b[33m⚠  Shell function not found.\x1b[0m Run this to set up:\n\n');
+  process.stderr.write(`  \x1b[36m${addCmd}\x1b[0m\n\n`);
+  process.stderr.write('Then use \x1b[1mrs\x1b[0m instead of \x1b[1mrepo-switch\x1b[0m\n\n');
 }
 
 // Render TUI to stderr so stdout is clean for the selected path
