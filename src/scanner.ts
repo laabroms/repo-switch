@@ -1,5 +1,5 @@
-import { existsSync } from 'fs';
-import { basename, join } from 'path';
+import { existsSync, readdirSync, statSync } from 'fs';
+import { basename, join, dirname } from 'path';
 import { execSync } from 'child_process';
 import { homedir } from 'os';
 
@@ -123,6 +123,53 @@ export function scanRepos(): Repo[] {
   // Sort alphabetically
   repos.sort((a, b) => a.name.localeCompare(b.name));
   return repos;
+}
+
+export interface DirEntry {
+  name: string;
+  path: string;
+  isDirectory: boolean;
+}
+
+const HIDDEN_DIRS = new Set([
+  'node_modules', '.git', '.next', '__pycache__', 'dist',
+  '.cache', '.turbo', '.vercel', '.DS_Store',
+]);
+
+export function listDirectory(dirPath: string): DirEntry[] {
+  try {
+    const entries = readdirSync(dirPath);
+    const dirs: DirEntry[] = [];
+    const files: DirEntry[] = [];
+
+    for (const entry of entries) {
+      if (entry.startsWith('.') || HIDDEN_DIRS.has(entry)) continue;
+
+      const fullPath = join(dirPath, entry);
+      try {
+        const stat = statSync(fullPath);
+        const item = { name: entry, path: fullPath, isDirectory: stat.isDirectory() };
+        if (stat.isDirectory()) {
+          dirs.push(item);
+        } else {
+          files.push(item);
+        }
+      } catch {
+        // skip unreadable
+      }
+    }
+
+    // Directories first, then files, both alphabetical
+    dirs.sort((a, b) => a.name.localeCompare(b.name));
+    files.sort((a, b) => a.name.localeCompare(b.name));
+    return [...dirs, ...files];
+  } catch {
+    return [];
+  }
+}
+
+export function getParentDir(dirPath: string): string {
+  return dirname(dirPath);
 }
 
 export function fuzzyMatch(query: string, text: string): boolean {
