@@ -26,11 +26,11 @@ export function FileTree({ entries, selectedIndex, currentDir, repoName }: Props
   // Get preview for selected file
   let preview: string[] = [];
   if (selected && !selected.isDirectory) {
-    preview = readFilePreview(selected.path, 8);
+    preview = readFilePreview(selected.path, 12);
   }
 
   // Windowed view
-  const windowSize = preview.length > 0 ? 10 : 14;
+  const windowSize = 14;
   const half = Math.floor(windowSize / 2);
   let start = Math.max(0, selectedIndex - half);
   const end = Math.min(entries.length, start + windowSize);
@@ -39,27 +39,17 @@ export function FileTree({ entries, selectedIndex, currentDir, repoName }: Props
   }
   const visible = entries.slice(start, end);
 
-  return (
-    <Box flexDirection="column">
+  const fileList = (
+    <Box flexDirection="column" width={preview.length > 0 ? 36 : undefined}>
       {/* Breadcrumb */}
-      <Box paddingLeft={2} marginBottom={1}>
+      <Box marginBottom={1}>
         <Text color="cyan" bold>{repoName}</Text>
         <Text dimColor> → </Text>
         <Text color="white">{shortenPath(currentDir)}</Text>
       </Box>
 
-      {/* Column header */}
-      <Box paddingLeft={4}>
-        <Text dimColor bold>{'NAME'}</Text>
-      </Box>
-      <Box paddingLeft={4} marginBottom={0}>
-        <Text dimColor>{'─'.repeat(50)}</Text>
-      </Box>
-
       {start > 0 && (
-        <Box paddingLeft={2}>
-          <Text dimColor>  ↑ {start} more</Text>
-        </Box>
+        <Text dimColor>  ↑ {start} more</Text>
       )}
 
       {visible.map((entry, i) => {
@@ -85,29 +75,27 @@ export function FileTree({ entries, selectedIndex, currentDir, repoName }: Props
       })}
 
       {end < entries.length && (
-        <Box paddingLeft={2}>
-          <Text dimColor>  ↓ {entries.length - end} more</Text>
-        </Box>
-      )}
-
-      {/* File preview */}
-      {preview.length > 0 && selected && (
-        <Box flexDirection="column" marginTop={1} paddingLeft={2}>
-          <Box>
-            <Text dimColor bold>{'─'.repeat(50)}</Text>
-          </Box>
-          <Box marginBottom={0}>
-            <Text color="cyan" dimColor> 📄 {selected.name}</Text>
-          </Box>
-          {preview.map((line, i) => (
-            <Box key={i} paddingLeft={2}>
-              <Text color="gray" dimColor>
-                {line || ' '}
-              </Text>
-            </Box>
-          ))}
-        </Box>
+        <Text dimColor>  ↓ {entries.length - end} more</Text>
       )}
     </Box>
   );
+
+  if (preview.length > 0 && selected) {
+    return (
+      <Box paddingLeft={2}>
+        {fileList}
+        <Box flexDirection="column" marginLeft={2} borderStyle="single" borderColor="gray" paddingX={1} width={46}>
+          <Text color="cyan" dimColor bold> 📄 {selected.name}</Text>
+          <Text dimColor>{'─'.repeat(42)}</Text>
+          {preview.map((line, i) => (
+            <Text key={i} color="gray" dimColor wrap="truncate">
+              {line || ' '}
+            </Text>
+          ))}
+        </Box>
+      </Box>
+    );
+  }
+
+  return <Box paddingLeft={2}>{fileList}</Box>;
 }
