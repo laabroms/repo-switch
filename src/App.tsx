@@ -240,10 +240,17 @@ export function App() {
         const entry = fileEntries[fileIndex];
         if (entry?.isDirectory) {
           enterDir(entry.path);
-        } else {
-          // Select the current directory we're in
-          selectPath(currentDir);
+        } else if (entry) {
+          // Open full file viewer
+          const lines = readFullFile(entry.path);
+          setViewerFilePath(entry.path);
+          setViewerLines(lines);
+          setViewerScroll(0);
+          setView('file-viewer');
         }
+      } else if (key.ctrl && input === 'o') {
+        // cd to current directory
+        selectPath(currentDir);
       } else if (key.escape) {
         // Back to repo list
         setView('repos');
@@ -416,7 +423,7 @@ export function App() {
         {/* Footer */}
         <Box marginTop={1} paddingLeft={2}>
           <Text dimColor>
-            <Text color="cyan">←</Text> back  <Text color="cyan">→</Text> enter dir/view file  <Text color="cyan">↑↓</Text> navigate  <Text color="cyan">⏎</Text> cd here  <Text color="cyan">esc</Text> repos
+            <Text color="cyan">←</Text> back  <Text color="cyan">→/⏎</Text> open  <Text color="cyan">↑↓</Text> navigate  <Text color="cyan">^o</Text> cd here  <Text color="cyan">esc</Text> repos
           </Text>
         </Box>
       </Box>
