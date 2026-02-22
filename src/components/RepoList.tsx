@@ -8,25 +8,35 @@ interface Props {
   query: string;
 }
 
+function truncate(str: string, max: number): string {
+  return str.length > max ? str.slice(0, max - 1) + '…' : str;
+}
+
+function shortenPath(path: string): string {
+  const home = process.env.HOME || '';
+  return path.startsWith(home) ? '~' + path.slice(home.length) : path;
+}
+
 export function RepoList({ repos, selectedIndex, query }: Props) {
   if (repos.length === 0 && query) {
     return (
-      <Box marginTop={1}>
-        <Text color="yellow">No repos matching "{query}"</Text>
+      <Box marginTop={1} paddingLeft={2}>
+        <Text color="gray">No repos matching </Text>
+        <Text color="yellow">"{query}"</Text>
       </Box>
     );
   }
 
   if (repos.length === 0) {
     return (
-      <Box marginTop={1}>
-        <Text color="yellow">No repos found. Try running from a directory with Git repos.</Text>
+      <Box marginTop={1} paddingLeft={2}>
+        <Text color="gray">No repos found.</Text>
       </Box>
     );
   }
 
-  // Show a window of repos around the selected index
-  const windowSize = 15;
+  // Windowed view
+  const windowSize = 12;
   const half = Math.floor(windowSize / 2);
   let start = Math.max(0, selectedIndex - half);
   const end = Math.min(repos.length, start + windowSize);
@@ -36,16 +46,29 @@ export function RepoList({ repos, selectedIndex, query }: Props) {
   const visible = repos.slice(start, end);
 
   return (
-    <Box flexDirection="column" marginTop={1}>
-      <Box marginBottom={1}>
-        <Text bold color="cyan">
-          {repos.length} repo{repos.length !== 1 ? 's' : ''}
-        </Text>
-        {query && <Text color="gray"> matching "{query}"</Text>}
+    <Box flexDirection="column">
+      {/* Column headers */}
+      <Box paddingLeft={4} marginBottom={0}>
+        <Box width={22}>
+          <Text dimColor bold>REPO</Text>
+        </Box>
+        <Box width={18}>
+          <Text dimColor bold>BRANCH</Text>
+        </Box>
+        <Box width={10}>
+          <Text dimColor bold>STATUS</Text>
+        </Box>
+        <Text dimColor bold>LAST COMMIT</Text>
+      </Box>
+
+      <Box paddingLeft={4} marginBottom={0}>
+        <Text dimColor>{'─'.repeat(65)}</Text>
       </Box>
 
       {start > 0 && (
-        <Text color="gray">  ↑ {start} more above</Text>
+        <Box paddingLeft={2}>
+          <Text dimColor>  ↑ {start} more</Text>
+        </Box>
       )}
 
       {visible.map((repo, i) => {
@@ -53,28 +76,43 @@ export function RepoList({ repos, selectedIndex, query }: Props) {
         const isSelected = actualIndex === selectedIndex;
 
         return (
-          <Box key={repo.path}>
-            <Text color={isSelected ? 'cyan' : 'white'}>
-              {isSelected ? '▶ ' : '  '}
-            </Text>
-            <Box width={24}>
-              <Text bold={isSelected} color={isSelected ? 'white' : 'gray'}>
-                {repo.name}
+          <Box key={repo.path} flexDirection="column">
+            <Box>
+              <Text color={isSelected ? 'cyanBright' : 'gray'}>
+                {isSelected ? ' ▸ ' : '   '}
               </Text>
+              <Box width={22}>
+                <Text bold={isSelected} color={isSelected ? 'white' : 'gray'}>
+                  {truncate(repo.name, 20)}
+                </Text>
+              </Box>
+              <Box width={18}>
+                <Text color={isSelected ? 'greenBright' : 'green'}>
+                  {truncate(repo.branch, 16)}
+                </Text>
+              </Box>
+              <Box width={10}>
+                {repo.dirty ? (
+                  <Text color="yellow">● modified</Text>
+                ) : (
+                  <Text color={isSelected ? 'greenBright' : 'green'}>✓ clean</Text>
+                )}
+              </Box>
+              <Text dimColor>{repo.lastCommit}</Text>
             </Box>
-            <Box width={16}>
-              <Text color="green">⎇ {repo.branch}</Text>
-            </Box>
-            {repo.dirty && (
-              <Text color="yellow">● </Text>
+            {isSelected && (
+              <Box paddingLeft={3}>
+                <Text dimColor>{shortenPath(repo.path)}</Text>
+              </Box>
             )}
-            <Text color="gray">{repo.lastCommit}</Text>
           </Box>
         );
       })}
 
       {end < repos.length && (
-        <Text color="gray">  ↓ {repos.length - end} more below</Text>
+        <Box paddingLeft={2}>
+          <Text dimColor>  ↓ {repos.length - end} more</Text>
+        </Box>
       )}
     </Box>
   );

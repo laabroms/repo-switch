@@ -27,7 +27,6 @@ export function App() {
     );
   }, [allRepos, query]);
 
-  // Reset selection when filter changes
   useEffect(() => {
     setSelectedIndex(0);
   }, [query]);
@@ -56,7 +55,9 @@ export function App() {
     return (
       <Box flexDirection="column">
         <Logo />
-        <Text color="yellow">🔍 Scanning for Git repos...</Text>
+        <Box paddingLeft={2}>
+          <Text color="yellow">⏳ Scanning for repos...</Text>
+        </Box>
       </Box>
     );
   }
@@ -65,16 +66,21 @@ export function App() {
     return (
       <Box flexDirection="column">
         <Logo />
-        <Box flexDirection="column" marginTop={1}>
-          <Text bold color="green">
-            ✓ Selected: {selected.name}
-          </Text>
-          <Text color="gray">{selected.path}</Text>
-          <Box marginTop={1}>
-            <Text color="cyan">📋 Copied to clipboard: </Text>
-            <Text bold>cd {selected.path}</Text>
+        <Box flexDirection="column" paddingLeft={2} marginTop={1}>
+          <Box>
+            <Text color="greenBright" bold>✓ </Text>
+            <Text bold color="white">{selected.name}</Text>
           </Box>
-          <Text color="gray" dimColor>Paste in your terminal to jump there</Text>
+          <Box paddingLeft={2} marginTop={0}>
+            <Text dimColor>{selected.path}</Text>
+          </Box>
+          <Box marginTop={1}>
+            <Text color="cyan">📋 Copied: </Text>
+            <Text color="white" bold>cd {selected.path}</Text>
+          </Box>
+          <Box marginTop={0}>
+            <Text dimColor italic>Paste in terminal to jump there</Text>
+          </Box>
         </Box>
       </Box>
     );
@@ -84,9 +90,13 @@ export function App() {
     <Box flexDirection="column">
       <Logo />
 
-      <Box>
-        <Text bold color="cyan">🔍 Search: </Text>
-        <TextInput value={query} onChange={setQuery} placeholder="Type to filter repos..." />
+      {/* Search bar */}
+      <Box paddingLeft={2} marginBottom={1}>
+        <Text color="cyan" bold>❯ </Text>
+        <TextInput value={query} onChange={setQuery} placeholder="Search repos..." />
+        {filtered.length !== allRepos.length && (
+          <Text dimColor> ({filtered.length}/{allRepos.length})</Text>
+        )}
       </Box>
 
       <RepoList
@@ -95,9 +105,10 @@ export function App() {
         query={query}
       />
 
-      <Box marginTop={1}>
-        <Text color="gray">
-          [↑/↓] Navigate  [Enter] Select  [Esc] Quit
+      {/* Footer */}
+      <Box marginTop={1} paddingLeft={2}>
+        <Text dimColor>
+          <Text color="cyan">↑↓</Text> navigate  <Text color="cyan">⏎</Text> select  <Text color="cyan">esc</Text> quit
         </Text>
       </Box>
     </Box>

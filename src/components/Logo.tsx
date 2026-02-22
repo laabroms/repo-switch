@@ -4,17 +4,17 @@ import { Box, Text } from 'ink';
 export function Logo() {
   return (
     <Box flexDirection="column" marginBottom={1}>
-      <Text bold color="cyan">
-        ╔════════════════════════════════╗
+      <Text color="cyan">
+        {'  ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓'}
       </Text>
-      <Text bold color="cyan">
-        ║   </Text><Text bold color="white">📂 REPO-SWITCH</Text><Text bold color="cyan">            ║
+      <Text color="cyan">
+        {'  ┃'}
+        <Text color="white" bold>  📂  r e p o </Text>
+        <Text color="yellowBright" bold>- s w i t c h  </Text>
+        <Text color="cyan">    ┃</Text>
       </Text>
-      <Text bold color="cyan">
-        ║  </Text><Text color="gray">Jump to any local repo</Text><Text bold color="cyan">     ║
-      </Text>
-      <Text bold color="cyan">
-        ╚════════════════════════════════╝
+      <Text color="cyan">
+        {'  ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛'}
       </Text>
     </Box>
   );
