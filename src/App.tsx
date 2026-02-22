@@ -182,7 +182,7 @@ export function App() {
         doGitAction('status');
       } else if (key.ctrl && input === 'l') {
         doGitAction('log');
-      } else if (input === 'b' && !query) {
+      } else if (key.ctrl && input === 'b') {
         // Open branch manager
         const repo = filtered[selectedIndex];
         if (repo) {
@@ -196,8 +196,6 @@ export function App() {
             setBranchConfirm(false);
             setBranchDeleteResults(null);
             setView('branches');
-            // Clear 'b' that TextInput captured
-            setTimeout(() => setQuery(''), 0);
           } catch {
             // not a git repo or error
           }
@@ -452,7 +450,7 @@ export function App() {
           <Text color="cyan">↑↓</Text> navigate  <Text color="cyan">⏎</Text> open  <Text color="cyan">tab</Text> ★ favorite  <Text color="cyan">esc</Text> quit
         </Text>
         <Text dimColor>
-          <Text color="cyan">^p</Text> pull  <Text color="cyan">^s</Text> status  <Text color="cyan">^l</Text> log  <Text color="cyan">b</Text> branches
+          <Text color="cyan">^p</Text> pull  <Text color="cyan">^s</Text> status  <Text color="cyan">^l</Text> log  <Text color="cyan">^b</Text> branches
         </Text>
       </Box>
     </Box>
