@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
+import { readFilePreview } from '../scanner.js';
 
 export interface FileEntry {
   name: string;
@@ -20,8 +21,16 @@ function shortenPath(path: string): string {
 }
 
 export function FileTree({ entries, selectedIndex, currentDir, repoName }: Props) {
+  const selected = entries[selectedIndex];
+
+  // Get preview for selected file
+  let preview: string[] = [];
+  if (selected && !selected.isDirectory) {
+    preview = readFilePreview(selected.path, 8);
+  }
+
   // Windowed view
-  const windowSize = 14;
+  const windowSize = preview.length > 0 ? 10 : 14;
   const half = Math.floor(windowSize / 2);
   let start = Math.max(0, selectedIndex - half);
   const end = Math.min(entries.length, start + windowSize);
@@ -78,6 +87,25 @@ export function FileTree({ entries, selectedIndex, currentDir, repoName }: Props
       {end < entries.length && (
         <Box paddingLeft={2}>
           <Text dimColor>  ↓ {entries.length - end} more</Text>
+        </Box>
+      )}
+
+      {/* File preview */}
+      {preview.length > 0 && selected && (
+        <Box flexDirection="column" marginTop={1} paddingLeft={2}>
+          <Box>
+            <Text dimColor bold>{'─'.repeat(50)}</Text>
+          </Box>
+          <Box marginBottom={0}>
+            <Text color="cyan" dimColor> 📄 {selected.name}</Text>
+          </Box>
+          {preview.map((line, i) => (
+            <Box key={i} paddingLeft={2}>
+              <Text color="gray" dimColor>
+                {line || ' '}
+              </Text>
+            </Box>
+          ))}
         </Box>
       )}
     </Box>

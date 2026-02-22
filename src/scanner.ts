@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, statSync } from 'fs';
+import { existsSync, readdirSync, statSync, readFileSync } from 'fs';
 import { basename, join, dirname } from 'path';
 import { execSync } from 'child_process';
 import { homedir } from 'os';
@@ -209,6 +209,17 @@ export function listDirectory(dirPath: string): DirEntry[] {
 
 export function getParentDir(dirPath: string): string {
   return dirname(dirPath);
+}
+
+export function readFilePreview(filePath: string, maxLines: number = 10): string[] {
+  try {
+    const content = readFileSync(filePath, 'utf8');
+    if (content.includes('\0')) return ['[binary file]'];
+    const lines = content.split('\n').slice(0, maxLines);
+    return lines.map((l) => l.slice(0, 80));
+  } catch {
+    return ['[cannot read file]'];
+  }
 }
 
 export function runGitAction(repoPath: string, action: 'pull' | 'status' | 'log'): string {
