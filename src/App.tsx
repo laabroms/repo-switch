@@ -237,10 +237,9 @@ export function App() {
           enterDir(parent);
         }
       } else if (key.return) {
-        // Select current directory (or enter if it's a dir)
         const entry = fileEntries[fileIndex];
         if (entry?.isDirectory) {
-          selectPath(entry.path);
+          enterDir(entry.path);
         } else {
           // Select the current directory we're in
           selectPath(currentDir);
