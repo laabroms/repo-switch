@@ -4,12 +4,13 @@ import TextInput from 'ink-text-input';
 import { Logo } from './components/Logo.js';
 import { RepoList } from './components/RepoList.js';
 import { FileTree, type FileEntry } from './components/FileTree.js';
+import { FileViewer } from './components/FileViewer.js';
 import { GitActionModal } from './components/GitActionModal.js';
 import { BranchManager } from './components/BranchManager.js';
-import { scanRepos, fuzzyMatch, listDirectory, getParentDir, runGitAction, getBranches, deleteBranch, getCurrentRepoRoot, type Repo, type Branch } from './scanner.js';
+import { scanRepos, fuzzyMatch, listDirectory, getParentDir, runGitAction, getBranches, deleteBranch, getCurrentRepoRoot, readFullFile, type Repo, type Branch } from './scanner.js';
 import { getFavorites, toggleFavorite } from './config.js';
 
-type View = 'repos' | 'files' | 'git-action' | 'branches';
+type View = 'repos' | 'files' | 'file-viewer' | 'git-action' | 'branches';
 
 export function App() {
   const { exit } = useApp();
@@ -27,6 +28,11 @@ export function App() {
   const [currentRepoRoot, setCurrentRepoRoot] = useState('');
   const [fileEntries, setFileEntries] = useState<FileEntry[]>([]);
   const [fileIndex, setFileIndex] = useState(0);
+
+  // File viewer state
+  const [viewerFilePath, setViewerFilePath] = useState('');
+  const [viewerLines, setViewerLines] = useState<string[]>([]);
+  const [viewerScroll, setViewerScroll] = useState(0);
 
   // Git action state
   const [gitActionType, setGitActionType] = useState('');
@@ -139,6 +145,23 @@ export function App() {
       return;
     }
 
+    if (view === 'file-viewer') {
+      const termRows = process.stdout.rows || 24;
+      const pageSize = termRows - 6;
+      if (key.upArrow) {
+        setViewerScroll((prev) => Math.max(0, prev - 1));
+      } else if (key.downArrow) {
+        setViewerScroll((prev) => Math.min(Math.max(0, viewerLines.length - pageSize), prev + 1));
+      } else if (key.pageDown || (key.ctrl && input === 'd')) {
+        setViewerScroll((prev) => Math.min(Math.max(0, viewerLines.length - pageSize), prev + pageSize));
+      } else if (key.pageUp || (key.ctrl && input === 'u')) {
+        setViewerScroll((prev) => Math.max(0, prev - pageSize));
+      } else if (key.escape || key.leftArrow || input === 'q') {
+        setView('files');
+      }
+      return;
+    }
+
     if (view === 'repos') {
       if (key.upArrow) {
         setSelectedIndex((prev) => Math.max(0, prev - 1));
@@ -195,10 +218,16 @@ export function App() {
       } else if (key.downArrow) {
         setFileIndex((prev) => Math.min(fileEntries.length - 1, prev + 1));
       } else if (key.rightArrow) {
-        // Go deeper into directory
         const entry = fileEntries[fileIndex];
         if (entry?.isDirectory) {
           enterDir(entry.path);
+        } else if (entry) {
+          // Open full file viewer
+          const lines = readFullFile(entry.path);
+          setViewerFilePath(entry.path);
+          setViewerLines(lines);
+          setViewerScroll(0);
+          setView('file-viewer');
         }
       } else if (key.leftArrow) {
         // Go back up
@@ -357,6 +386,24 @@ export function App() {
     );
   }
 
+  if (view === 'file-viewer') {
+    return (
+      <Box flexDirection="column">
+        <Logo />
+        <FileViewer
+          filePath={viewerFilePath}
+          lines={viewerLines}
+          scrollOffset={viewerScroll}
+        />
+        <Box marginTop={1} paddingLeft={2}>
+          <Text dimColor>
+            <Text color="cyan">↑↓</Text> scroll  <Text color="cyan">^d/^u</Text> page  <Text color="cyan">←</Text> back  <Text color="cyan">q</Text> close
+          </Text>
+        </Box>
+      </Box>
+    );
+  }
+
   if (view === 'files') {
     return (
       <Box flexDirection="column">
@@ -372,7 +419,7 @@ export function App() {
         {/* Footer */}
         <Box marginTop={1} paddingLeft={2}>
           <Text dimColor>
-            <Text color="cyan">←</Text> back  <Text color="cyan">→</Text> enter dir  <Text color="cyan">↑↓</Text> navigate  <Text color="cyan">⏎</Text> cd here  <Text color="cyan">esc</Text> repos
+            <Text color="cyan">←</Text> back  <Text color="cyan">→</Text> enter dir/view file  <Text color="cyan">↑↓</Text> navigate  <Text color="cyan">⏎</Text> cd here  <Text color="cyan">esc</Text> repos
           </Text>
         </Box>
       </Box>

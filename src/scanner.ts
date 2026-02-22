@@ -284,6 +284,16 @@ export function readFilePreview(filePath: string, maxLines: number = 10): string
   }
 }
 
+export function readFullFile(filePath: string): string[] {
+  try {
+    const content = readFileSync(filePath, 'utf8');
+    if (content.includes('\0')) return ['[binary file]'];
+    return content.split('\n');
+  } catch {
+    return ['[cannot read file]'];
+  }
+}
+
 export function runGitAction(repoPath: string, action: 'pull' | 'status' | 'log'): string {
   try {
     switch (action) {
