@@ -21,6 +21,9 @@ export function App() {
   const [selected, setSelected] = useState<string | null>(null);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
 
+  // Auto-select current repo
+  const [autoSelectPath, setAutoSelectPath] = useState<string | null>(null);
+
   // File tree state
   const [view, setView] = useState<View>('repos');
   const [currentDir, setCurrentDir] = useState('');
@@ -55,27 +58,11 @@ export function App() {
     setAllRepos(repos);
     setScanning(false);
 
-    // If launched inside a git repo, default to it
+    // If launched inside a git repo, pre-select it in the list
     const currentRoot = getCurrentRepoRoot();
     if (currentRoot) {
-      const repoIndex = repos.findIndex((r) => r.path === currentRoot);
-      if (repoIndex >= 0) {
-        // Pre-select the current repo
-        // We need to find it in the sorted list, so defer to after sort
-        setTimeout(() => {
-          setCurrentRepoName(repos[repoIndex].name);
-          setCurrentRepoRoot(currentRoot);
-          setView('files');
-          const entries = listDirectory(currentRoot);
-          setFileEntries(entries.map((e) => ({
-            name: e.name,
-            path: e.path,
-            isDirectory: e.isDirectory,
-          })));
-          setFileIndex(0);
-          setCurrentDir(currentRoot);
-        }, 0);
-      }
+      // We need to find it after sorting, so store for later
+      setAutoSelectPath(currentRoot);
     }
   }, []);
 
@@ -88,6 +75,15 @@ export function App() {
       return a.name.localeCompare(b.name);
     });
   }, [allRepos, favorites]);
+
+  // Auto-select current repo in sorted list
+  useEffect(() => {
+    if (autoSelectPath && sorted.length > 0) {
+      const idx = sorted.findIndex((r) => r.path === autoSelectPath);
+      if (idx >= 0) setSelectedIndex(idx);
+      setAutoSelectPath(null);
+    }
+  }, [autoSelectPath, sorted]);
 
   const filtered = useMemo(() => {
     if (!query) return sorted;
