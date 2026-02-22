@@ -148,9 +148,13 @@ export function BranchManager({
             <Text color={isSelected ? 'cyanBright' : 'gray'}>
               {isSelected ? ' ▸ ' : '   '}
             </Text>
-            <Text color={isMarked ? 'red' : 'white'}>
-              {isMarked ? '☑ ' : '☐ '}
-            </Text>
+            {branch.protected ? (
+              <Text>  </Text>
+            ) : (
+              <Text color={isMarked ? 'red' : 'white'}>
+                {isMarked ? '☑ ' : '☐ '}
+              </Text>
+            )}
             <Box width={28}>
               <Text bold={isSelected} color={isMarked ? 'red' : isSelected ? 'white' : 'gray'}>
                 {branch.name.length > 26 ? branch.name.slice(0, 25) + '…' : branch.name}
