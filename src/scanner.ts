@@ -311,6 +311,18 @@ export function runGitAction(repoPath: string, action: 'pull' | 'status' | 'log'
   }
 }
 
+export function getCurrentRepoRoot(): string | null {
+  try {
+    return execSync('git rev-parse --show-toplevel', {
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+      timeout: 3000,
+    }).trim();
+  } catch {
+    return null;
+  }
+}
+
 export function fuzzyMatch(query: string, text: string): boolean {
   const q = query.toLowerCase();
   const t = text.toLowerCase();

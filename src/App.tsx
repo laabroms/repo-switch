@@ -6,7 +6,7 @@ import { RepoList } from './components/RepoList.js';
 import { FileTree, type FileEntry } from './components/FileTree.js';
 import { GitActionModal } from './components/GitActionModal.js';
 import { BranchManager } from './components/BranchManager.js';
-import { scanRepos, fuzzyMatch, listDirectory, getParentDir, runGitAction, getBranches, deleteBranch, type Repo, type Branch } from './scanner.js';
+import { scanRepos, fuzzyMatch, listDirectory, getParentDir, runGitAction, getBranches, deleteBranch, getCurrentRepoRoot, type Repo, type Branch } from './scanner.js';
 import { getFavorites, toggleFavorite } from './config.js';
 
 type View = 'repos' | 'files' | 'git-action' | 'branches';
@@ -48,6 +48,29 @@ export function App() {
     const repos = scanRepos();
     setAllRepos(repos);
     setScanning(false);
+
+    // If launched inside a git repo, default to it
+    const currentRoot = getCurrentRepoRoot();
+    if (currentRoot) {
+      const repoIndex = repos.findIndex((r) => r.path === currentRoot);
+      if (repoIndex >= 0) {
+        // Pre-select the current repo
+        // We need to find it in the sorted list, so defer to after sort
+        setTimeout(() => {
+          setCurrentRepoName(repos[repoIndex].name);
+          setCurrentRepoRoot(currentRoot);
+          setView('files');
+          const entries = listDirectory(currentRoot);
+          setFileEntries(entries.map((e) => ({
+            name: e.name,
+            path: e.path,
+            isDirectory: e.isDirectory,
+          })));
+          setFileIndex(0);
+          setCurrentDir(currentRoot);
+        }, 0);
+      }
+    }
   }, []);
 
   // Sort: favorites first, then alphabetical
