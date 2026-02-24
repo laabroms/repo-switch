@@ -43,6 +43,9 @@ export function App() {
   const [gitActionOutput, setGitActionOutput] = useState('');
   const [gitActionLoading, setGitActionLoading] = useState(false);
 
+  // Input swallow (prevent key leak from modal dismiss)
+  const [swallowNext, setSwallowNext] = useState(false);
+
   // Branch manager state
   const [branches, setBranches] = useState<Branch[]>([]);
   const [branchIndex, setBranchIndex] = useState(0);
@@ -136,8 +139,15 @@ export function App() {
   useInput((input, key) => {
     if (selected) return;
 
+    if (swallowNext) {
+      setSwallowNext(false);
+      return;
+    }
+
     if (view === 'git-action') {
+      // Swallow the dismiss key so it doesn't leak into search input
       setView('repos');
+      setSwallowNext(true);
       return;
     }
 
